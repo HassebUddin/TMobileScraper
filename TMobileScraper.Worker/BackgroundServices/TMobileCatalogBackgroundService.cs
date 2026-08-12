@@ -44,7 +44,7 @@ public sealed class TMobileCatalogBackgroundService
                 return 1;
             }
 
-            var today = DateTime.Today;
+            var now = DateTime.Now;
             var attachments = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
             var saveErrors = new List<string>();
 
@@ -64,7 +64,7 @@ public sealed class TMobileCatalogBackgroundService
                 if (string.IsNullOrWhiteSpace(safeName))
                     safeName = "TMobileDealerOrdering";
 
-                var fileName = $"{safeName}_{today:yyyyMMdd}.xlsx";
+                var fileName = $"{safeName}_{now:yyyy}_{now:MM}_{now:dd}_{now:HHmmss}.xlsx";
                 attachments[fileName] = file.Value;
 
                 try
@@ -89,12 +89,7 @@ public sealed class TMobileCatalogBackgroundService
                 details["Save errors"] = string.Join(" | ", saveErrors);
 
             var htmlBody = EmailTemplateBuilder.CreateEmailBody("T-Mobile Catalog Export", details);
-            var emailSent = await _emailService.SendEmailWithAttachmentsAsync(
-                EmailType.TMobileCatalogExport,
-                "TechnoComm Scraping",
-                "T-Mobile Catalog Export",
-                htmlBody,
-                attachments);
+            var emailSent = await _emailService.SendEmailWithAttachmentsAsync(EmailType.TMobileCatalogExport, "TechnoComm Scraping", "T-Mobile Catalog Export", htmlBody, attachments);
 
             _logger.LogInformation("{LogKey} | EmailSent={EmailSent} | Result=Completed", logKey, emailSent);
             return saveErrors.Count == 0 ? 0 : 1;
