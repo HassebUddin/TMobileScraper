@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>TMobileScraper</RootNamespace>
+    <AssemblyName>TMobileScraper</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="MailKit" Version="4.14.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.61.0" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.Development.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <Target Name="InstallPlaywrightBrowsers" AfterTargets="Build">
+    <PropertyGroup>
+      <PlaywrightBrowsersPath>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\$(OutputPath)playwright-browsers'))</PlaywrightBrowsersPath>
+    </PropertyGroup>
+    <Message Text="Installing Playwright Chromium to $(PlaywrightBrowsersPath)" Importance="high" />
+    <Exec Command="powershell -ExecutionPolicy Bypass -File &quot;$(OutputPath)playwright.ps1&quot; install chromium"
+          EnvironmentVariables="PLAYWRIGHT_BROWSERS_PATH=$(PlaywrightBrowsersPath)"
+          Condition="Exists('$(OutputPath)playwright.ps1')" />
+  </Target>
+
+</Project>
