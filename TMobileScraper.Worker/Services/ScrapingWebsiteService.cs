@@ -27,6 +27,7 @@ public sealed class ScrapingWebsiteService : IScrapingWebsiteService
     public async Task<ScrapingExportResult> ExportTMobileCatalogAsync(ScrapingSourceType sourceType, CancellationToken cancellationToken = default)
     {
         string logKey = $"ExportTMobileCatalogAsync_{DateTime.Now:yyyy-MM-dd HH:mm:ss} | SourceType={sourceType}";
+        const string exportName = "TMobileCatalogScraping";
         string[] exportColumns = ["Product Name", "SKU", "Price", "Date and Time"];
 
         try
@@ -41,6 +42,8 @@ public sealed class ScrapingWebsiteService : IScrapingWebsiteService
 
             var catalogFilter = website.filter.Trim();
             logKey += $" | Filter={catalogFilter}";
+
+            _logger.LogInformation("{LogKey} | Scraping started | Website={Website}", logKey, website.website_url);
 
             var scrapingResult = await PlaywrightScraperHelper.ScrapeTMobileDealerOrderingAsync(website, catalogFilter, _options, cancellationToken);
             if (!scrapingResult.Success)
@@ -67,11 +70,11 @@ public sealed class ScrapingWebsiteService : IScrapingWebsiteService
             {
                 Success = true,
                 Message = message,
-                ExportBaseName = sourceType.ToString(),
+                ExportBaseName = exportName,
                 Columns = exportColumns,
                 Sheets = new Dictionary<string, List<Dictionary<string, object?>>>(StringComparer.OrdinalIgnoreCase)
                 {
-                    [sourceType.ToString()] = allRows
+                    [exportName] = allRows
                 }
             };
         }

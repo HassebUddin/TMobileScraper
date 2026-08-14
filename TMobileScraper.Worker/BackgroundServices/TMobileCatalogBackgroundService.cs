@@ -34,7 +34,9 @@ public sealed class TMobileCatalogBackgroundService
             _logger.LogInformation("{LogKey} | Started | OutputFolder={Folder}", logKey, _options.OutputFolder);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(Math.Max(_options.TimeoutSeconds, 60)));
+            cts.CancelAfter(TimeSpan.FromSeconds(Math.Max(_options.RunTimeoutSeconds, 300)));
+
+            _logger.LogInformation("{LogKey} | Scraping started | RunTimeoutSeconds={RunTimeoutSeconds}", logKey, _options.RunTimeoutSeconds);
 
             var result = await _scrapingWebsiteService.ExportTMobileCatalogAsync(ScrapingSourceType.TMobileDealerOrdering, cts.Token);
             if (!result.Success)
@@ -60,7 +62,7 @@ public sealed class TMobileCatalogBackgroundService
 
             var safeName = InvalidFileChars.Replace(result.ExportBaseName.Trim(), "_");
             if (string.IsNullOrWhiteSpace(safeName))
-                safeName = "TMobileDealerOrdering";
+                safeName = "TMobileCatalogScraping";
 
             var fileName = $"{safeName}.xlsx";
 
@@ -91,6 +93,16 @@ public sealed class TMobileCatalogBackgroundService
 
             _logger.LogInformation("{LogKey} | EmailSent={EmailSent} | Result=Completed", logKey, emailSent);
             return saveErrors.Count == 0 ? 0 : 1;
+        }
+        catch (OperationCanceledException ex)
+        {
+            _logger.LogError(ex, "{LogKey} | Timed out | RunTimeoutSeconds={RunTimeoutSeconds}", logKey, _options.RunTimeoutSeconds);
+            var errorBody = EmailTemplateBuilder.CreateEmailBody("T-Mobile Catalog Export", new Dictionary<string, string>
+            {
+                ["Error"] = $"Scraping timed out after {_options.RunTimeoutSeconds} seconds."
+            });
+            await _emailService.SendEmailAsync(EmailType.TMobileCatalogExport, "TechnoComm Scraping", "T-Mobile Catalog Export", errorBody);
+            return 1;
         }
         catch (Exception ex)
         {
