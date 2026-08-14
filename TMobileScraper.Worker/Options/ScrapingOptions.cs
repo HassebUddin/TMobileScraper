@@ -8,5 +8,5 @@ public sealed class ScrapingOptions
     public int TimeoutSeconds { get; set; } = 120;
     public int SlowMo { get; set; }
     public int DebugPauseSeconds { get; set; } = 30;
-    public string OutputFolder { get; set; } = @"\\192.168.1.3\Bot_Data_IT";
+    public string OutputFolder { get; set; } = @"\\192.168.1.3\Bot_Data_IT\Inventory";
 }

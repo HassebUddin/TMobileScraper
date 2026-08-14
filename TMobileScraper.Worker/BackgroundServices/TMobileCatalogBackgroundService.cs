@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using TMobileScraper.Enums;
+using TMobileScraper.Helpers;
 using TMobileScraper.Interfaces;
 using TMobileScraper.Options;
 using TMobileScraper.Templates.Email;
@@ -44,7 +45,6 @@ public sealed class TMobileCatalogBackgroundService
                 return 1;
             }
 
-            var now = DateTime.Now;
             var attachments = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
             var saveErrors = new List<string>();
 
@@ -58,26 +58,24 @@ public sealed class TMobileCatalogBackgroundService
                 _logger.LogWarning(ex, "{LogKey} | Save folder failed", logKey);
             }
 
-            foreach (var file in result.Files)
+            var safeName = InvalidFileChars.Replace(result.ExportBaseName.Trim(), "_");
+            if (string.IsNullOrWhiteSpace(safeName))
+                safeName = "TMobileDealerOrdering";
+
+            var fileName = $"{safeName}.xlsx";
+
+            try
             {
-                var safeName = InvalidFileChars.Replace(file.Key.Trim(), "_");
-                if (string.IsNullOrWhiteSpace(safeName))
-                    safeName = "TMobileDealerOrdering";
-
-                var fileName = $"{safeName}_{now:yyyy}_{now:MM}_{now:dd}_{now:HHmmss}.xlsx";
-                attachments[fileName] = file.Value;
-
-                try
-                {
-                    var fullPath = Path.Combine(_options.OutputFolder, fileName);
-                    await File.WriteAllBytesAsync(fullPath, file.Value, cancellationToken);
-                    _logger.LogInformation("{LogKey} | Saved | {Path}", logKey, fullPath);
-                }
-                catch (Exception ex)
-                {
-                    saveErrors.Add($"Could not save '{fileName}': {ex.Message}");
-                    _logger.LogWarning(ex, "{LogKey} | Save file failed | {FileName}", logKey, fileName);
-                }
+                var fullPath = Path.Combine(_options.OutputFolder, fileName);
+                ExcelExportHelper.AppendToWorkbook(fullPath, result.Sheets, result.Columns, 30);
+                var fileBytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
+                attachments[fileName] = fileBytes;
+                _logger.LogInformation("{LogKey} | Saved | {Path}", logKey, fullPath);
+            }
+            catch (Exception ex)
+            {
+                saveErrors.Add($"Could not save '{fileName}': {ex.Message}");
+                _logger.LogWarning(ex, "{LogKey} | Save file failed | {FileName}", logKey, fileName);
             }
 
             var details = new Dictionary<string, string>

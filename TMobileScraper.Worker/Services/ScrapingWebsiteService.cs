@@ -27,7 +27,7 @@ public sealed class ScrapingWebsiteService : IScrapingWebsiteService
     public async Task<ScrapingExportResult> ExportTMobileCatalogAsync(ScrapingSourceType sourceType, CancellationToken cancellationToken = default)
     {
         string logKey = $"ExportTMobileCatalogAsync_{DateTime.Now:yyyy-MM-dd HH:mm:ss} | SourceType={sourceType}";
-        string[] exportColumns = ["Product Name", "SKU", "Price"];
+        string[] exportColumns = ["Product Name", "SKU", "Price", "Date and Time"];
 
         try
         {
@@ -46,14 +46,34 @@ public sealed class ScrapingWebsiteService : IScrapingWebsiteService
             if (!scrapingResult.Success)
                 return new ScrapingExportResult { Success = false, Message = scrapingResult.Message };
 
-            var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
-            using var stream = ExcelExportHelper.BuildMultiSheetWorkbook(scrapingResult.Data, exportColumns);
-            files[sourceType.ToString()] = stream.ToArray();
+            var scrapedAt = DateTime.Now;
+            var allRows = new List<Dictionary<string, object?>>();
 
-            var totalProducts = scrapingResult.Data.Values.Sum(static rows => rows.Count);
+            foreach (var rows in scrapingResult.Data.Values)
+            {
+                foreach (var row in rows)
+                {
+                    allRows.Add(new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["Date and Time"] = scrapedAt
+                    });
+                }
+            }
+
+            var totalProducts = allRows.Count;
             var message = $"{totalProducts} products exported in 1 file.";
             _logger.LogInformation("{LogKey} | Website={Website} | Result=Success | Message={Message}", logKey, website.website_url, message);
-            return new ScrapingExportResult { Success = true, Message = message, Files = files };
+            return new ScrapingExportResult
+            {
+                Success = true,
+                Message = message,
+                ExportBaseName = sourceType.ToString(),
+                Columns = exportColumns,
+                Sheets = new Dictionary<string, List<Dictionary<string, object?>>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    [sourceType.ToString()] = allRows
+                }
+            };
         }
         catch (Exception ex)
         {

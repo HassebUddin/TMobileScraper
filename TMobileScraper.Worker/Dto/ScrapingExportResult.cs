@@ -4,5 +4,8 @@ public sealed class ScrapingExportResult
 {
     public bool Success { get; init; }
     public string Message { get; init; } = "";
-    public Dictionary<string, byte[]> Files { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+    public string ExportBaseName { get; init; } = "";
+    public IReadOnlyList<string> Columns { get; init; } = [];
+    public IReadOnlyDictionary<string, List<Dictionary<string, object?>>> Sheets { get; init; }
+        = new Dictionary<string, List<Dictionary<string, object?>>>(StringComparer.OrdinalIgnoreCase);
 }
