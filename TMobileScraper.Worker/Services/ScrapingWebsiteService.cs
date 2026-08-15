@@ -28,7 +28,7 @@ public sealed class ScrapingWebsiteService : IScrapingWebsiteService
     {
         string logKey = $"ExportTMobileCatalogAsync_{DateTime.Now:yyyy-MM-dd HH:mm:ss} | SourceType={sourceType}";
         const string exportName = "TMobileCatalogScraping";
-        string[] exportColumns = ["Product Name", "SKU", "Price", "Date and Time"];
+        string[] exportColumns = ["Product Name", "SKU", "Price", "Date", "Time"];
 
         try
         {
@@ -58,7 +58,8 @@ public sealed class ScrapingWebsiteService : IScrapingWebsiteService
                 {
                     allRows.Add(new Dictionary<string, object?>(row, StringComparer.OrdinalIgnoreCase)
                     {
-                        ["Date and Time"] = scrapedAt
+                        ["Date"] = scrapedAt.Date,                        
+                        ["Time"] = scrapedAt.ToString("HH:mm:ss")        
                     });
                 }
             }
