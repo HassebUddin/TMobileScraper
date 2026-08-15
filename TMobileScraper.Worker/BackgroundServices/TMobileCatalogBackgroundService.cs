@@ -1,6 +1,7 @@
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Text.RegularExpressions;
+using TMobileScraper.Dto;
 using TMobileScraper.Enums;
 using TMobileScraper.Helpers;
 using TMobileScraper.Interfaces;
@@ -38,14 +39,26 @@ public sealed class TMobileCatalogBackgroundService
 
             _logger.LogInformation("{LogKey} | Scraping started | RunTimeoutSeconds={RunTimeoutSeconds}", logKey, _options.RunTimeoutSeconds);
 
-            var result = await _scrapingWebsiteService.ExportTMobileCatalogAsync(ScrapingSourceType.TMobileDealerOrdering, cts.Token);
-            if (!result.Success)
+            const int maxAttempts = 3;
+            ScrapingExportResult? result = null;
+            for (var attempt = 1; attempt <= maxAttempts; attempt++)
             {
-                _logger.LogError("{LogKey} | Scrape failed | {Message}", logKey, result.Message);
-                var failBody = EmailTemplateBuilder.CreateEmailBody("T-Mobile Catalog Export", new Dictionary<string, string> { ["Result"] = result.Message });
+                _logger.LogInformation("{LogKey} | Scrape attempt {Attempt}/{MaxAttempts}", logKey, attempt, maxAttempts);
+                result = await _scrapingWebsiteService.ExportTMobileCatalogAsync(ScrapingSourceType.TMobileDealerOrdering, cts.Token);
+                if (result.Success)
+                    break;
+                _logger.LogWarning("{LogKey} | Attempt {Attempt} failed | {Message}", logKey, attempt, result.Message);
+                if (attempt < 3)
+                    await Task.Delay(TimeSpan.FromSeconds(10), cts.Token); 
+            }
+            if (result is null || !result.Success)
+            {
+                _logger.LogError("{LogKey} | Scrape failed after {MaxAttempts} attempts | {Message}",logKey, maxAttempts, result?.Message);
+                var failBody = EmailTemplateBuilder.CreateEmailBody("T-Mobile Catalog Export", new Dictionary<string, string> { ["Result"] = result?.Message ?? "Unknown error" });
                 await _emailService.SendEmailAsync(EmailType.TMobileCatalogExport, "TechnoComm Scraping", "T-Mobile Catalog Export", failBody);
                 return 1;
             }
+
 
             var attachments = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
             var saveErrors = new List<string>();
