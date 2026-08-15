@@ -68,6 +68,7 @@ public sealed class TMobileCatalogBackgroundService
 
             try
             {
+
                 var fullPath = Path.Combine(_options.OutputFolder, fileName);
                 ExcelExportHelper.AppendToWorkbook(fullPath, result.Sheets, result.Columns, 30);
                 var fileBytes = await File.ReadAllBytesAsync(fullPath, cancellationToken);
