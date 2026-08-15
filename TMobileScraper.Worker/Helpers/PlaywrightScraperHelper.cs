@@ -61,7 +61,6 @@ public static class PlaywrightScraperHelper
 
             if (await IsLoginPageVisibleAsync(page))
             {
-
                 var sheetPassword = await ExcelExportHelper.GetSheetRowValueAsync("https://docs.google.com/spreadsheets/d/1JoIsM60AjbqN0LhDuzOnwbW-EUyFVRV_r4aTQx6tZIg/export?format=csv&gid=0", "User Name", website.username, "New Password", cancellationToken);
                 if (!string.IsNullOrWhiteSpace(sheetPassword))
                     await DoStep(page, "Login retry", () => LoginAsync(page, website.username, sheetPassword, options.TimeoutSeconds));
