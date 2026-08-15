@@ -54,13 +54,20 @@ public static class PlaywrightScraperHelper
             if ((await page.TitleAsync()).Contains("Access Denied", StringComparison.OrdinalIgnoreCase))
                 return (false, "The portal blocked this server's network address.", []);
 
-            await DoStep(page, "Login", () => LoginAsync(page, website, options.TimeoutSeconds));
+            await DoStep(page, "Login", () => LoginAsync(page, website.username, website.password, options.TimeoutSeconds));
 
             if ((await page.TitleAsync()).Contains("Access Denied", StringComparison.OrdinalIgnoreCase))
                 return (false, "The portal blocked this server's network address.", []);
 
-            if (await page.Locator("#password:visible, input[name='nolog_password']:visible").CountAsync() > 0)
-                return (false, "Login failed. Check username/password in scraping_websites table.", []);
+            if (await IsLoginPageVisibleAsync(page))
+            {
+                var sheetPassword = await ExcelExportHelper.GetSheetRowValueAsync("https://docs.google.com/spreadsheets/d/1JoIsM60AjbqN0LhDuzOnwbW-EUyFVRV_r4aTQx6tZIg/export?format=csv&gid=0", "User Name", website.username, "New Password", cancellationToken);
+                if (!string.IsNullOrWhiteSpace(sheetPassword))
+                    await DoStep(page, "Login retry", () => LoginAsync(page, website.username, sheetPassword, options.TimeoutSeconds));
+            }
+
+            if (await IsLoginPageVisibleAsync(page))
+                return (false, "Login failed. Check username/password in scraping_websites table or IDOO LOGINS sheet.", []);
 
             await DoStep(page, "Wait for portal", () => WaitForPortalReadyAsync(page, Math.Min(options.TimeoutSeconds, 45)));
 
@@ -121,10 +128,13 @@ public static class PlaywrightScraperHelper
             BrowserLock.Release();
         }
 
-        async Task LoginAsync(IPage loginPage, ScrapingWebsite site, int timeoutSeconds)
+        async Task<bool> IsLoginPageVisibleAsync(IPage loginPage) =>
+            await loginPage.Locator("#password:visible, input[name='nolog_password']:visible").CountAsync() > 0;
+
+        async Task LoginAsync(IPage loginPage, string username, string password, int timeoutSeconds)
         {
-            await loginPage.Locator("#userid, input[name='UserId']").First.FillAsync(site.username);
-            await loginPage.Locator("#password, input[name='nolog_password']").First.FillAsync(site.password);
+            await loginPage.Locator("#userid, input[name='UserId']").First.FillAsync(username);
+            await loginPage.Locator("#password, input[name='nolog_password']").First.FillAsync(password);
             await loginPage.Locator("input[name='AgreeTerms']").CheckAsync();
             await loginPage.Locator("a[name='login']").ClickAsync();
 

@@ -1,3 +1,4 @@
+using System.Net.Http;
 using ClosedXML.Excel;
 
 namespace TMobileScraper.Helpers;
@@ -141,6 +142,41 @@ public static class ExcelExportHelper
         }
 
         wb.SaveAs(filePath);
+    }
+
+    public static async Task<string?> GetSheetRowValueAsync(string sheetCsvUrl, string matchColumn, string matchValue, string returnColumn, CancellationToken cancellationToken = default)
+    {
+        using var http = new HttpClient();
+        var csv = await http.GetStringAsync(sheetCsvUrl, cancellationToken);
+        using var reader = new StringReader(csv);
+
+        var headerLine = await reader.ReadLineAsync(cancellationToken);
+        if (string.IsNullOrWhiteSpace(headerLine))
+            return null;
+
+        var headers = headerLine.Split(',').Select(static h => h.Trim().Trim('"')).ToList();
+        var matchIndex = headers.FindIndex(h => h.Equals(matchColumn, StringComparison.OrdinalIgnoreCase));
+        var returnIndex = headers.FindIndex(h => h.Equals(returnColumn, StringComparison.OrdinalIgnoreCase));
+        if (matchIndex < 0 || returnIndex < 0)
+            return null;
+
+        while (await reader.ReadLineAsync(cancellationToken) is { } line)
+        {
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var cells = line.Split(',').Select(static c => c.Trim().Trim('"')).ToList();
+            if (matchIndex >= cells.Count || returnIndex >= cells.Count)
+                continue;
+
+            if (!cells[matchIndex].Equals(matchValue, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var value = cells[returnIndex + 1].Trim();
+            return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        return null;
     }
 
     private static List<Dictionary<string, object?>> ReadWorksheetRows(IXLWorksheet ws, IReadOnlyList<string> columns)
